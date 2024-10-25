@@ -238,6 +238,110 @@ function obterClassesControladoras($caminhoControladores, $namespaceBase) {
 }
 
 ```
+## Arquivo: Rotas/DocBlockRouter.php (comentado em detalhes)
+este arquivo é dependente do Reflection e do phpDocumentor
+https://phpdoc.org/
+https://www.php.net/manual/en/book.reflection.php
+```
+<?php
+namespace Fast\Api\Rotas;
+
+use ReflectionClass;
+use ReflectionMethod;
+use phpDocumentor\Reflection\DocBlockFactory;
+class DocBlockRouter {
+    private array $rotas = [];
+    public function passaControlador(string $classeControladora) {
+        // Cria uma reflexão da classe controladora
+        $reflexaoControladora = new ReflectionClass($classeControladora);
+        // Obtém todos os métodos públicos da classe controladora
+        $metodos = $reflexaoControladora->getMethods(ReflectionMethod::IS_PUBLIC);
+        // Cria uma instância da fábrica de DocBlocks
+        $fabricaDocBlock = DocBlockFactory::createInstance();
+        // Percorre cada método público da classe controladora
+        foreach ($metodos as $metodo) {
+            // Obtém o comentário do DocBlock do método
+            $comentarioDoc = $metodo->getDocComment();
+            if ($comentarioDoc) {
+                // Cria um objeto DocBlock a partir do comentário
+                $docBlock = $fabricaDocBlock->create($comentarioDoc);
+                $metodosHttp = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
+                // Verifica se o DocBlock possui alguma das tags HTTP
+                foreach ($metodosHttp as $metodoHttp) {
+                    if ($docBlock->hasTag($metodoHttp)) {
+                        // Obtém a primeira tag correspondente ao método HTTP
+                        $tagRota = $docBlock->getTagsByName($metodoHttp)[0];
+                        // Obtém o conteúdo da descrição da tag (ex: '("/usuarios")')
+                        $conteudo = $tagRota->getDescription()->render();
+                        // Extrai o caminho da rota a partir do conteúdo da tag
+                        preg_match('/\("(.*)"\)/', $conteudo, $correspondencias);
+                        $caminho = $correspondencias[1] ?? '';
+                        // Armazena a rota no array de rotas, associando o método HTTP, caminho e ação
+                        $this->rotas[$metodoHttp][$caminho] = [$classeControladora, $metodo->getName()];
+                    }
+                }
+            }
+        }
+    }
+    public function resolve($metodoHttp, $uri) {
+        // Verifica se existem rotas para o método HTTP solicitado
+        if (!isset($this->rotas[$metodoHttp])) {
+            http_response_code(405);
+            echo json_encode(['status' => false, 'message' => 'Método não permitido']);
+            exit();
+        }
+        // Obtém o caminho da URI (sem query strings)
+        $uri = parse_url($uri, PHP_URL_PATH);
+        // Percorre cada rota registrada para o método HTTP
+        foreach ($this->rotas[$metodoHttp] as $rota => $acao) {
+            // Substitui os parâmetros da rota por expressões regulares nomeadas
+            $padrao = preg_replace_callback('/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/', function ($matches) {
+                $nomeParametro = $matches[1];
+                // Para parâmetros genéricos, permite qualquer sequência que não contenha '/'
+                return '(?P<' . $nomeParametro . '>[^/]+)';
+            }, $rota);
+            // Define o padrão como uma expressão regular completa
+            $padrao = '#^' . $padrao . '$#u';
+            // Verifica se a URI corresponde ao padrão da rota
+            if (preg_match($padrao, $uri, $correspondencias)) {
+                // Cria uma instância da classe controladora
+                $instanciaControladora = new $acao[0]();
+                $nomeMetodo = $acao[1];
+                // Filtra os parâmetros nomeados capturados na expressão regular
+                $parametros = array_filter(
+                    $correspondencias,
+                    fn($chave) => is_string($chave),
+                    ARRAY_FILTER_USE_KEY
+                );
+                // Obtém os dados do corpo da requisição (se houver)
+                $dados = json_decode(file_get_contents('php://input'), true);
+                // Obtém os parâmetros esperados pelo método através da reflexão
+                $metodoRefletido = new ReflectionMethod($instanciaControladora, $nomeMetodo);
+                $parametrosMetodo = $metodoRefletido->getParameters();
+                $argumentos = [];
+                // Prepara os argumentos a serem passados para o método, na ordem correta
+                foreach ($parametrosMetodo as $parametro) {
+                    $nome = $parametro->getName();
+                    if (isset($parametros[$nome])) {
+                        $argumentos[] = $parametros[$nome];
+                    } elseif ($nome === 'dados') {
+                        $argumentos[] = $dados;
+                    } else {
+                        $argumentos[] = null;
+                    }
+                }
+                // Chama o método da controladora com os argumentos obtidos
+                return call_user_func_array([$instanciaControladora, $nomeMetodo], $argumentos);
+            }
+        }
+        // Se nenhuma rota corresponder, retorna erro 404
+        http_response_code(404);
+        echo json_encode(['status' => false, 'message' => 'Rota não encontrada']);
+        exit();
+    }
+}
+
+```
 
 ## Licença
 Este projeto está licenciado sob a MIT License.
