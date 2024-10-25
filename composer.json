@@ -1,0 +1,20 @@
+{
+    "name": "backend/api",
+    "description": "O **FastApi** é um projeto de backend que facilita a inclusão de rotas em uma aplicação REST. O projeto utiliza **anotações nos comentários (DocBlocks)** dos controladores para definir as rotas,  Inspirado no estilo do **FastAPI** em Python.",
+    "type": "no",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Fast\\Api\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "faustinopsy",
+            "email": "rodrigohipnose@gmail.com"
+        }
+    ],
+    "require": {
+        "phpdocumentor/reflection-docblock": "^5.2"
+    }
+}
