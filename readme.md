@@ -78,7 +78,7 @@ class UserController {
 }
 ```
 ## Endpoints Disponíveis
-O projeto inclui cinco operações CRUD nas mesmas rotas, variando apenas o método HTTP. Veja abaixo os endpoints disponíveis:
+O projeto inclui sete operações CRUD nas mesmas rotas, variando apenas o método HTTP. Veja abaixo os endpoints disponíveis:
 
 - GET /users - Retorna todos os usuários
 - GET /users/{id} - Retorna um usuário específico pelo ID
