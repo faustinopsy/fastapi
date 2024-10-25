@@ -343,5 +343,14 @@ class DocBlockRouter {
 
 ```
 
+![busca por datas](img/img-1.png)
+![deletar usuario](img/img-2.png)
+![atualizar usuario](img/img-3.png)
+![criar usuario](img/img-4.png)
+![tentar criar usuario existente](img/img-5.png)
+![buscar usuario por id](img/img-6.png)
+![buscar todos](img/img-7.png)
+
 ## Licença
 Este projeto está licenciado sob a MIT License.
+
